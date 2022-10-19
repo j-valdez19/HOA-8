@@ -6,7 +6,7 @@
 
   - name: install updates (CentOS)
     tags: always
-    dnf:
+    yum:
       update_only: yes
       update_cache: yes
     when: ansible_distribution == "CentOS"
@@ -23,25 +23,7 @@
   become: true
   tasks:
 
-  - name: install unzip
-    package:
-      name: unzip
-
-  - name: install terraform
-    unarchive:
-      src: https://releases.hashicorp.com/terraform/0.12.28/terraform_0.12.28_linux_amd64.zip
-      dest: /usr/local/bin
-      remote_src: yes
-      mode: 0755
-      owner: root
-      group: root
-
-
-- hosts: web_servers
-  become: true
-  tasks:
-
-  - name: install apache and php for Ubuntu servers
+  - name: install apache and php for Ubuntu
     tags: apache, apache2, ubuntu
     apt:
       name:
@@ -51,7 +33,7 @@
       update_cache: yes
     when: ansible_distribution == "Ubuntu"
 
-  - name: install apache and php for CentOS servers
+  - name: install apache and php for CentOS
     tags: apache, centos, httpd
     dnf:
       name:
@@ -60,55 +42,80 @@
       state: latest
     when: ansible_distribution == "CentOS"
 
-  - name: start httpd (CentOS)
+
+  - name: install Nagios for Ubuntu (and other dependent libraries)
+    apt:
+      name:
+        - nagios4
+        - nagios-nrpe-plugin
+        - nagios-plugins-contrib
+    when: ansible_distribution == "Ubuntu"
+
+
+
+  - name: install other dependent libraries for CentOS Nagios
+    yum:
+      name:
+        - epel-release
+        - gcc
+        - glibc
+        - glibc-common
+        - make
+        - gd
+        - gd-devel
+        - net-snmp
+    when: ansible_distribution == "CentOS"
+
+  - name: install Nagios for CentOS
+    unarchive:
+      src: https://sourceforge.net/projects/nagios/files/nagios-4.x/nagios-4.0.7/nagios-4.0.7.tar.gz/download?use_mirror=altushost-swe
+      dest: ~/nagios
+      remote_src: yes
+      mode: 0755
+      owner: root
+      group: root
+    when: ansible_distribution == "CentOS"
+
+  - name: install Nagios plugins for CentOS
+    unarchive:
+      src: http://nagios-plugins.org/download/nagios-plugins-2.0.3.tar.gz
+      dest: ~/nagios
+      remote_src: yes
+      mode: 0755
+      owner: root
+      group: root
+    when: ansible_distribution == "CentOS"
+
+
+
+  - name: Restart apache2 (Ubuntu)
+    tags: apache, ubuntu, apache2
+    service:
+      name: apache2
+      state: restarted
+      enabled: true
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Restart httpd (CentOS)
     tags: apache, centos, httpd
     service:
       name: httpd
-      state: started
-      enabled: true
-    when: ansible_distribution == "CentOS"
-
-  - name: copy default html file for site
-    tags: apache, apache2, httpd
-    copy:
-      src: default_site.html
-      dest: /var/www/html/index.html
-      owner: root
-      group: root
-      mode: 0644
-
-
-- hosts: db_servers
-  become: true
-  tasks:
-
-  - name: install mariadb package (CentOS)
-    tags: centos, db, mariadb
-    yum:
-      name: mariadb-server
-      state: latest
-    when: ansible_distribution == "CentOS"
-
-  - name: install mariadb package (Ubuntu)
-    tags: ubuntu, db, mariadb
-    apt:
-      name: mariadb-server
-      state: latest
-    when: ansible_distribution == "Ubuntu"
-
-  - name: "Mariadb- Restarting/Enabling"
-    service:
-      name: mariadb
       state: restarted
       enabled: true
+    when: ansible_distribution == "CentOS"
 
 
-- hosts: file_servers
-  become: true
-  tasks:
 
-  - name: install samba package
-    tags: samba
-    package:
-      name: samba
-      state: latest
+  - name: Restarting Nagios for Ubuntu
+    service:
+      name: nagios4
+      state: restarted
+      enabled: true
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Restarting Nagios for CentOS
+    service:
+      name: nagios.service
+      state: restarted
+      enabled: true
+    when: ansible_distribution == "CentOS"

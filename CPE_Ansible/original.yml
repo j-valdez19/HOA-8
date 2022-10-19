@@ -6,7 +6,7 @@
 
   - name: install updates (CentOS)
     tags: always
-    dnf:
+    yum:
       update_only: yes
       update_cache: yes
     when: ansible_distribution == "CentOS"
@@ -51,7 +51,9 @@
         - nagios-plugins-contrib
     when: ansible_distribution == "Ubuntu"
 
-  - name: install Nagios for CentOS (and other dependent libraries)
+
+
+  - name: install other dependent libraries for CentOS Nagios
     yum:
       name:
         - epel-release
@@ -63,6 +65,27 @@
         - gd-devel
         - net-snmp
     when: ansible_distribution == "CentOS"
+
+  - name: install Nagios for CentOS
+    unarchive:
+      src: https://sourceforge.net/projects/nagios/files/nagios-4.x/nagios-4.0.7/nagios-4.0.7.tar.gz/download?use_mirror=altushost-swe
+      dest: ~/nagios
+      remote_src: yes
+      mode: 0755
+      owner: root
+      group: root
+    when: ansible_distribution == "CentOS"
+
+  - name: install Nagios plugins for CentOS
+    unarchive:
+      src: http://nagios-plugins.org/download/nagios-plugins-2.0.3.tar.gz
+      dest: ~/nagios
+      remote_src: yes
+      mode: 0755
+      owner: root
+      group: root
+    when: ansible_distribution == "CentOS"
+
 
 
   - name: Restart apache2 (Ubuntu)
@@ -82,9 +105,17 @@
     when: ansible_distribution == "CentOS"
 
 
+
   - name: Restarting Nagios for Ubuntu
     service:
       name: nagios4
       state: restarted
       enabled: true
     when: ansible_distribution == "Ubuntu"
+
+  - name: Restarting Nagios for CentOS
+    service:
+      name: nagios.service
+      state: restarted
+      enabled: true
+    when: ansible_distribution == "CentOS"
